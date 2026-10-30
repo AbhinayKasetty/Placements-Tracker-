@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Placement Tracker</title>
+  <style>
+    :root {
+      --bg: #f4f6fb; --card: #ffffff; --text: #1f2430; --muted: #6b7280;
+      --border: #e5e7eb; --primary: #4f46e5; --primary-hover: #4338ca;
+      --danger: #dc2626; --ok: #16a34a; --chip: #eef2ff; --chip-text: #4338ca;
+      --shadow: 0 1px 3px rgba(16,24,40,.08), 0 4px 12px rgba(16,24,40,.06);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f1220; --card: #181c2f; --text: #e8eaf3; --muted: #9aa3b8;
+        --border: #2a3050; --primary: #6366f1; --primary-hover: #818cf8;
+        --chip: #26295a; --chip-text: #c7d2fe; --shadow: 0 4px 16px rgba(0,0,0,.4);
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.5;
+    }
+    header {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: #fff; padding: 36px 20px 70px;
+    }
+    .wrap { max-width: 1000px; margin: 0 auto; }
+    header h1 { margin: 0 0 4px; font-size: 28px; }
+    header p { margin: 0; opacity: .85; }
+    main { max-width: 1000px; margin: -44px auto 40px; padding: 0 20px; }
+
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 18px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); }
+    .stat { padding: 16px 18px; }
+    .stat .label { color: var(--muted); font-size: 13px; }
+    .stat .value { font-size: 26px; font-weight: 700; }
+
+    .panel { padding: 20px; margin-bottom: 18px; }
+    .panel h2 { margin: 0 0 14px; font-size: 18px; }
+    form { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+    input {
+      width: 100%; padding: 10px 12px; font-size: 15px; color: var(--text);
+      background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+    }
+    input:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-color: transparent; }
+    .actions { display: flex; gap: 10px; align-items: end; }
+    button {
+      font-size: 14px; font-weight: 600; padding: 10px 16px; border-radius: 10px;
+      border: 1px solid transparent; cursor: pointer; transition: background .15s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-ghost { background: transparent; color: var(--text); border-color: var(--border); }
+    .btn-ghost:hover { background: var(--bg); }
+    .btn-danger { background: transparent; color: var(--danger); border-color: var(--border); }
+    .btn-danger:hover { background: rgba(220,38,38,.1); }
+    .btn-small { padding: 6px 12px; font-size: 13px; }
+
+    .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+    .toolbar input { max-width: 280px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    .name { font-weight: 600; }
+    .chip { display: inline-block; background: var(--chip); color: var(--chip-text); font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 999px; margin: 2px 4px 2px 0; }
+    .cgpa { font-weight: 700; padding: 2px 10px; border-radius: 999px; font-size: 13px; }
+    .cgpa.high { background: rgba(22,163,74,.15); color: var(--ok); }
+    .cgpa.mid { background: rgba(217,119,6,.15); color: #d97706; }
+    .cgpa.low { background: rgba(107,114,128,.18); color: var(--muted); }
+    .row-actions { display: flex; gap: 8px; }
+    .empty { text-align: center; color: var(--muted); padding: 30px 10px; }
+
+    #toast {
+      position: fixed; right: 20px; bottom: 20px; padding: 12px 18px; border-radius: 10px;
+      color: #fff; font-weight: 600; box-shadow: var(--shadow);
+      opacity: 0; transform: translateY(10px); transition: all .25s; pointer-events: none;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+    #toast.ok { background: var(--ok); }
+    #toast.error { background: var(--danger); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Placement Tracker</h1>
+      <p>Manage student profiles for campus placements</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="stats">
+      <div class="card stat"><div class="label">Students</div><div class="value" id="statCount">0</div></div>
+      <div class="card stat"><div class="label">Average CGPA</div><div class="value" id="statAvg">-</div></div>
+      <div class="card stat"><div class="label">Highest CGPA</div><div class="value" id="statMax">-</div></div>
+    </section>
+
+    <section class="card panel" id="formPanel">
+      <h2 id="formTitle">Add a student</h2>
+      <form id="studentForm">
+        <div><label for="name">Name</label><input id="name" required></div>
+        <div><label for="rollNumber">Roll number</label><input id="rollNumber" required></div>
+        <div><label for="branch">Branch</label><input id="branch" required></div>
+        <div><label for="cgpa">CGPA (0-10)</label><input id="cgpa" type="number" step="0.01" min="0" max="10"></div>
+        <div><label for="skills">Skills (comma separated)</label><input id="skills" placeholder="Java, SQL, Spring"></div>
+        <div class="actions">
+          <button type="submit" class="btn-primary" id="submitBtn">Add student</button>
+          <button type="button" class="btn-ghost" id="cancelBtn" hidden>Cancel</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card panel">
+      <div class="toolbar">
+        <h2 style="margin:0">Students</h2>
+        <input id="search" type="search" placeholder="Search name, roll no, branch or skill">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Roll no</th><th>Branch</th><th>CGPA</th><th>Skills</th><th></th></tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast"></div>
+
+  <script>
+    const API = '/api/students';
+    const form = document.getElementById('studentForm');
+    const rows = document.getElementById('rows');
+    const submitBtn = document.getElementById('submitBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const formTitle = document.getElementById('formTitle');
+    const search = document.getElementById('search');
+    const toast = document.getElementById('toast');
+    const fields = ['name', 'rollNumber', 'branch', 'cgpa', 'skills'];
+    let students = [];
+    let editingId = null;
+    let toastTimer;
+
+    function showToast(text, ok) {
+      toast.textContent = text;
+      toast.className = 'show ' + (ok ? 'ok' : 'error');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toast.className = ''; }, 3000);
+    }
+
+    async function readError(res) {
+      try {
+        const data = await res.json();
+        if (data.fields) {
+          return Object.entries(data.fields).map(([f, m]) => f + ': ' + m).join(', ');
+        }
+        return data.error || 'Something went wrong';
+      } catch {
+        return 'Something went wrong (status ' + res.status + ')';
+      }
+    }
+
+    async function loadStudents() {
+      const res = await fetch(API);
+      students = await res.json();
+      render();
+    }
+
+    function updateStats() {
+      document.getElementById('statCount').textContent = students.length;
+      const scores = students.map(s => s.cgpa).filter(c => c !== null && c !== undefined);
+      document.getElementById('statAvg').textContent =
+        scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2) : '-';
+      document.getElementById('statMax').textContent =
+        scores.length ? Math.max(...scores).toFixed(2) : '-';
+    }
+
+    function cgpaClass(c) { return c >= 8 ? 'high' : c >= 6.5 ? 'mid' : 'low'; }
+
+    function cell(content) {
+      const td = document.createElement('td');
+      if (content instanceof Node) td.appendChild(content); else td.textContent = content ?? '';
+      return td;
+    }
+
+    function render() {
+      updateStats();
+      const q = search.value.trim().toLowerCase();
+      const list = students.filter(s =>
+        !q || [s.name, s.rollNumber, s.branch, s.skills].some(v => (v || '').toLowerCase().includes(q)));
+
+      rows.replaceChildren();
+      if (list.length === 0) {
+        const tr = document.createElement('tr');
+        const td = cell(students.length ? 'No students match your search.' : 'No students yet. Add the first one above.');
+        td.colSpan = 6; td.className = 'empty';
+        tr.appendChild(td); rows.appendChild(tr);
+        return;
+      }
+
+      list.forEach(s => {
+        const tr = document.createElement('tr');
+
+        const nameCell = cell(s.name); nameCell.className = 'name';
+
+        const cgpaEl = document.createElement('span');
+        if (s.cgpa !== null && s.cgpa !== undefined) {
+          cgpaEl.className = 'cgpa ' + cgpaClass(s.cgpa);
+          cgpaEl.textContent = Number(s.cgpa).toFixed(2);
+        }
+
+        const skillsEl = document.createElement('div');
+        (s.skills || '').split(',').map(x => x.trim()).filter(Boolean).forEach(skill => {
+          const chip = document.createElement('span');
+          chip.className = 'chip'; chip.textContent = skill;
+          skillsEl.appendChild(chip);
+        });
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn-ghost btn-small'; editBtn.textContent = 'Edit';
+        editBtn.onclick = () => startEdit(s);
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn-danger btn-small'; delBtn.textContent = 'Delete';
+        delBtn.onclick = () => deleteStudent(s);
+        const actions = document.createElement('div');
+        actions.className = 'row-actions'; actions.append(editBtn, delBtn);
+
+        tr.append(nameCell, cell(s.rollNumber), cell(s.branch), cell(cgpaEl), cell(skillsEl), cell(actions));
+        rows.appendChild(tr);
+      });
+    }
+
+    function startEdit(s) {
+      editingId = s.id;
+      fields.forEach(f => document.getElementById(f).value = s[f] ?? '');
+      formTitle.textContent = 'Edit student';
+      submitBtn.textContent = 'Save changes';
+      cancelBtn.hidden = false;
+      document.getElementById('formPanel').scrollIntoView({ behavior: 'smooth' });
+      document.getElementById('name').focus();
+    }
+
+    function resetForm() {
+      editingId = null;
+      form.reset();
+      formTitle.textContent = 'Add a student';
+      submitBtn.textContent = 'Add student';
+      cancelBtn.hidden = true;
+    }
+
+    async function deleteStudent(s) {
+      if (!confirm('Delete ' + s.name + '?')) return;
+      const res = await fetch(API + '/' + s.id, { method: 'DELETE' });
+      if (!res.ok) { showToast(await readError(res), false); return; }
+      showToast('Student deleted', true);
+      loadStudents();
+    }
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const cgpa = document.getElementById('cgpa').value;
+      const body = {
+        name: document.getElementById('name').value.trim(),
+        rollNumber: document.getElementById('rollNumber').value.trim(),
+        branch: document.getElementById('branch').value.trim(),
+        cgpa: cgpa === '' ? null : Number(cgpa),
+        skills: document.getElementById('skills').value.trim()
+      };
+      const res = await fetch(editingId ? API + '/' + editingId : API, {
+        method: editingId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) { showToast(await readError(res), false); return; }
+      showToast(editingId ? 'Student updated' : 'Student added', true);
+      resetForm();
+      loadStudents();
+    });
+
+    cancelBtn.addEventListener('click', resetForm);
+    search.addEventListener('input', render);
+    loadStudents();
+  </script>
+</body>
+</html>
