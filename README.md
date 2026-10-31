@@ -4,6 +4,9 @@ A full-stack web app to manage student profiles for campus placements.
 
 **Tech:** Java, Spring Boot, Spring Data JPA, MySQL, HTML/CSS/JavaScript
 
+**Live demo:** https://placements-tracker.onrender.com
+*(Hosted on a free tier, so the first load can take up to a minute.)*
+
 ## Features
 - Add, view, edit and delete student profiles
 - Validation (CGPA range, required fields)
