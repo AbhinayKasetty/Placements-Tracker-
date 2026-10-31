@@ -1,0 +1,5 @@
+target
+.git
+secrets.properties
+log.txt
+error.txt
